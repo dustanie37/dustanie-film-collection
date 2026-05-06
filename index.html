@@ -1599,25 +1599,29 @@ function moveToCollection(id) {
 // ── CLOUD SYNC (Supabase) ─────────────────────────────────────────────
 // Single shared row (id=1) — no user auth required.
 
-// Called on init. Auto-pulls ONLY if local collection is empty.
+// Called on init. Cloud is the source of truth — always loads from cloud
+// if cloud count >= local count. If local is somehow ahead, prompts to push.
 async function onCloudInit() {
   updateSyncStatus('syncing');
   try {
     const res = await fetch(`${SB_URL}/rest/v1/movie_collection?id=eq.1`, { headers: SB_HDR });
     if (!res.ok) { updateSyncStatus('error'); return; }
     const rows = await res.json();
-    if (!rows.length || !Array.isArray(rows[0].movies)) { updateSyncStatus('synced'); return; }
-    const cloudMovies = rows[0].movies;
+    if (!rows.length || !Array.isArray(rows[0].movies) || rows[0].movies.length === 0) {
+      updateSyncStatus('synced'); return;
+    }
+    const cloudMovies = sanitizeMovies(rows[0].movies);
     const cloudCount  = cloudMovies.length;
     const localCount  = movies.length;
-    if (localCount === 0 && cloudCount > 0) {
-      movies = sanitizeMovies(cloudMovies);
+    if (cloudCount >= localCount) {
+      // Cloud is authoritative — load it so every device always sees the same collection
+      movies = cloudMovies;
       nextId = Math.max(200, ...movies.map(m => m.id)) + 1;
       localStorage.setItem('mc_movies_v2', JSON.stringify(movies));
       render();
-      toast(`☁ Loaded ${cloudCount} movies from cloud.`, 't-ok');
-    } else if (cloudCount > 0 && cloudCount !== localCount) {
-      toast(`☁ Cloud: ${cloudCount} films · Local: ${localCount} films. Use Pull from Cloud if needed.`, 't-info');
+    } else {
+      // Local is ahead of cloud (e.g. connectivity issue during a previous push)
+      toast(`☁ Local has ${localCount} films but cloud has ${cloudCount}. Use Force Push in Settings to sync.`, 't-info');
     }
     updateSyncStatus('synced');
   } catch(e) {
