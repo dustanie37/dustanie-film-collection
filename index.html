@@ -40,25 +40,50 @@
       padding: 14px 28px;
       display: flex;
       align-items: center;
-      gap: 28px;
+      justify-content: space-between;
       position: sticky;
       top: 0;
       z-index: 100;
     }
-    .header-brand {
+    .header-left { display: flex; flex-direction: column; min-width: 150px; }
+    .header-date { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); }
+    .header-greeting { font-size: 1rem; font-weight: 500; color: var(--text); margin-top: 2px; }
+    .header-center { display: flex; flex-direction: column; align-items: center; }
+    .header-title {
       font-family: 'Playfair Display', serif;
-      font-size: 1.45rem;
+      font-size: 1.5rem;
       font-weight: 700;
       color: var(--gold);
       white-space: nowrap;
       letter-spacing: 0.01em;
     }
-    .header-brand em { font-style: italic; font-weight: 400; }
-    .stats-bar { display: flex; gap: 24px; flex: 1; }
-    .stat { display: flex; flex-direction: column; align-items: center; }
-    .stat-value { font-size: 1.2rem; font-weight: 600; color: var(--gold); line-height: 1; }
-    .stat-label { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); margin-top: 2px; }
-    .header-actions { display: flex; gap: 8px; margin-left: auto; }
+    .header-title em { font-style: italic; font-weight: 400; }
+    .header-domain { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.14em; color: var(--text-muted); margin-top: 2px; }
+    .header-actions { display: flex; gap: 8px; align-items: center; }
+
+    /* ── STATS STRIP ── */
+    .stats-strip {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 28px;
+      display: flex;
+      gap: 0;
+    }
+    .stat {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      flex: 1;
+      padding: 10px 0;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      border-radius: 0;
+    }
+    .stat:first-child { border-radius: var(--radius) 0 0 var(--radius); }
+    .stat:last-child  { border-radius: 0 var(--radius) var(--radius) 0; }
+    .stat + .stat { border-left: none; }
+    .stat-value { font-size: 1.3rem; font-weight: 600; color: var(--gold); line-height: 1; }
+    .stat-label { font-size: 0.58rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); margin-top: 3px; }
 
     /* ── BUTTONS ── */
     .btn {
@@ -559,7 +584,8 @@
 
     /* ── RESPONSIVE ── */
     @media (max-width: 640px) {
-      .stats-bar { display: none; }
+      .stats-strip { display: none; }
+      .header-date { display: none; }
       .header { padding: 12px 16px; }
       .controls-bar, .main { padding-left: 12px; padding-right: 12px; }
       .movie-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
@@ -574,14 +600,13 @@
      HEADER
 ══════════════════════════════════════════ -->
 <header class="header">
-  <div class="header-brand">🎬 Dustanie's <em>Film Collection</em></div>
-  <div class="stats-bar">
-    <div class="stat"><div class="stat-value" id="sTot">0</div><div class="stat-label">Titles</div></div>
-    <div class="stat"><div class="stat-value" id="sBD">0</div><div class="stat-label">Blu-ray</div></div>
-    <div class="stat"><div class="stat-value" id="sDVD">0</div><div class="stat-label">DVD</div></div>
-    <div class="stat"><div class="stat-value" id="sW">0</div><div class="stat-label">Watched</div></div>
-    <div class="stat"><div class="stat-value" id="sUW">0</div><div class="stat-label">Unwatched</div></div>
-    <div class="stat"><div class="stat-value" id="sWL" style="color:#ce93d8;">0</div><div class="stat-label">Wishlist</div></div>
+  <div class="header-left">
+    <div class="header-date" id="headerDate"></div>
+    <div class="header-greeting" id="headerGreeting"></div>
+  </div>
+  <div class="header-center">
+    <div class="header-title">🎬 Dustanie's <em>Film Collection</em></div>
+    <div class="header-domain">DUSTANIE.COM</div>
   </div>
   <div class="header-actions">
     <span id="syncStatus" style="font-size:0.75rem;color:var(--text-muted);padding-right:4px;" title=""></span>
@@ -589,6 +614,18 @@
     <button class="btn btn-primary" onclick="openAdd()">+ Add Movie</button>
   </div>
 </header>
+
+<!-- ══════════════════════════════════════════
+     STATS STRIP
+══════════════════════════════════════════ -->
+<div class="stats-strip">
+  <div class="stat"><div class="stat-value" id="sTot">0</div><div class="stat-label">Titles</div></div>
+  <div class="stat"><div class="stat-value" id="sBD">0</div><div class="stat-label">Blu-ray</div></div>
+  <div class="stat"><div class="stat-value" id="sDVD">0</div><div class="stat-label">DVD</div></div>
+  <div class="stat"><div class="stat-value" id="sW">0</div><div class="stat-label">Watched</div></div>
+  <div class="stat"><div class="stat-value" id="sUW">0</div><div class="stat-label">Unwatched</div></div>
+  <div class="stat"><div class="stat-value" id="sWL" style="color:#ce93d8;">0</div><div class="stat-label">Wishlist</div></div>
+</div>
 
 <!-- ══════════════════════════════════════════
      CONTROLS
@@ -825,7 +862,7 @@
       <div class="setting-group">
         <label class="setting-label">🛡 Local Backup</label>
         <div class="setting-actions">
-          <button class="btn btn-secondary btn-sm" onclick="saveBackup();toast('Backup saved in this browser.','t-ok')">💾 Save Backup Now</button>
+          <button class="btn btn-secondary btn-sm" onclick="saveBackup()?toast('✓ Backup saved in this browser.','t-ok'):toast('Backup failed — storage may be full.','t-err')">💾 Save Backup Now</button>
           <button class="btn btn-secondary btn-sm" onclick="restoreBackup()">↩ Restore Last Backup</button>
         </div>
         <p class="setting-hint" id="backupHint">A backup snapshot is automatically saved before any import or cloud pull. Use this to recover if something goes wrong.</p>
@@ -926,8 +963,21 @@ const SB_URL = 'https://ecckvouhkoiuhdbynbqa.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVjY2t2b3Voa29pdWhkYnluYnFhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwOTE0MTcsImV4cCI6MjA5MzY2NzQxN30.SyQKBwBPAV2IpeaI4p3jBXu0F7oSapzihKaeaxodtDo';
 const SB_HDR = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json' };
 
+// ── HEADER DATE / GREETING ───────────────────────────────────────────
+function initHeaderDate() {
+  const now = new Date();
+  const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const dateStr = `${days[now.getDay()]}, ${months[now.getMonth()]} ${now.getDate()}, ${now.getFullYear()}`;
+  const hour = now.getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+  document.getElementById('headerDate').textContent = dateStr;
+  document.getElementById('headerGreeting').textContent = greeting;
+}
+
 // ── INIT ─────────────────────────────────────────────────────────────
 function init() {
+  initHeaderDate();
   // Populate year dropdown in search
   const ySel = document.getElementById('omdbY');
   const blank = document.createElement('option');
@@ -1646,6 +1696,7 @@ function updateSyncStatus(status) {
 function saveBackup() {
   // Snapshot the current collection into localStorage before any destructive operation.
   // A single backup slot is kept; it's overwritten on each save.
+  // Returns true on success, false on failure.
   try {
     const snap = {
       movies,
@@ -1653,8 +1704,23 @@ function saveBackup() {
       count: movies.length
     };
     localStorage.setItem('mc_movies_backup', JSON.stringify(snap));
+    updateBackupHint();
+    return true;
   } catch(e) {
     console.warn('Could not save local backup:', e);
+    return false;
+  }
+}
+
+function updateBackupHint() {
+  const raw = localStorage.getItem('mc_movies_backup');
+  const hint = document.getElementById('backupHint');
+  if (!hint) return;
+  if (raw) {
+    try {
+      const snap = JSON.parse(raw);
+      hint.textContent = `Last backup: ${snap.savedAt} (${snap.count} titles). A snapshot is also auto-saved before any import or cloud pull.`;
+    } catch(e) { /* leave default */ }
   }
 }
 
@@ -1665,9 +1731,9 @@ function restoreBackup() {
     const snap = JSON.parse(raw);
     if (!Array.isArray(snap.movies) || snap.movies.length === 0) throw new Error('empty');
     if (!confirm(`Restore ${snap.movies.length} movies from backup?\n(Saved: ${snap.savedAt})\n\nThis will replace your current ${movies.length} movies.`)) return;
-    movies = snap.movies;
+    movies = sanitizeMovies(snap.movies);
     nextId = Math.max(0, ...movies.map(m => m.id)) + 1;
-    localStorage.setItem('mc_movies_v2', JSON.stringify(movies));
+    persist(); // saves to localStorage AND syncs to cloud
     render();
     closeSettings();
     toast(`✓ Restored ${movies.length} movies from backup.`, 't-ok');
@@ -1755,6 +1821,7 @@ function updateLastPushedDisplay() {
 function openSettings() {
   document.getElementById('apiKeyInput').value = apiKey;
   updateLastPushedDisplay();
+  updateBackupHint();
   document.getElementById('settingsOverlay').classList.remove('hidden');
 }
 function closeSettings() { document.getElementById('settingsOverlay').classList.add('hidden'); }
