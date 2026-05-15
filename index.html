@@ -853,39 +853,13 @@
       </div>
 
       <div class="setting-group">
-        <label class="setting-label">Export &amp; Import</label>
+        <label class="setting-label">Backup</label>
         <div class="setting-actions">
           <button class="btn btn-secondary btn-sm" onclick="exportJSON()">⬇ Export JSON</button>
-          <button class="btn btn-secondary btn-sm" onclick="exportCSV()">⬇ Export CSV</button>
           <button class="btn btn-secondary btn-sm" onclick="document.getElementById('importFile').click()">⬆ Import JSON</button>
           <input type="file" id="importFile" accept=".json" style="display:none" onchange="importJSON(event)">
         </div>
-        <p class="setting-hint">Export saves your full collection as a JSON file — keep a copy somewhere safe. Import replaces your current data with the file.</p>
-      </div>
-
-      <div class="setting-group">
-        <label class="setting-label">🛡 Local Backup</label>
-        <div class="setting-actions">
-          <button class="btn btn-secondary btn-sm" onclick="saveBackup()?toast('✓ Backup saved in this browser.','t-ok'):toast('Backup failed — storage may be full.','t-err')">💾 Save Backup Now</button>
-          <button class="btn btn-secondary btn-sm" onclick="restoreBackup()">↩ Restore Last Backup</button>
-        </div>
-        <p class="setting-hint" id="backupHint">A backup snapshot is automatically saved before any import or cloud pull. Use this to recover if something goes wrong.</p>
-      </div>
-
-      <div class="setting-group">
-        <label class="setting-label">☁ Cloud Sync</label>
-        <p class="setting-hint" style="margin-bottom:8px;">Sync is automatic — every change saves to the cloud instantly. The ☁ icon in the header shows sync status.</p>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
-          <button class="btn btn-secondary btn-sm" onclick="syncFromCloud()">🔄 Pull from Cloud</button>
-          <button class="btn btn-secondary btn-sm" onclick="pushToCloud()">☁ Force Push</button>
-        </div>
-        <p id="lastPushedDisplay" class="setting-hint" style="display:none;"></p>
-        <p class="setting-hint"><strong>Pull from Cloud</strong> replaces your local collection with the cloud copy — use this on a new device or to recover. <strong>Force Push</strong> manually re-uploads if something looks out of sync.</p>
-      </div>
-
-      <div class="setting-group">
-        <label class="setting-label" style="color:#ef5350;">Danger Zone</label>
-        <button class="btn btn-danger btn-sm" onclick="resetData()">🗑 Reset to Original Collection</button>
+        <p class="setting-hint">Export saves your full collection as a JSON file. Import replaces your current data — cloud syncs automatically.</p>
       </div>
 
     </div>
@@ -1847,8 +1821,6 @@ function updateLastPushedDisplay() {
 
 function openSettings() {
   document.getElementById('apiKeyInput').value = apiKey;
-  updateLastPushedDisplay();
-  updateBackupHint();
   document.getElementById('settingsOverlay').classList.remove('hidden');
 }
 function closeSettings() { document.getElementById('settingsOverlay').classList.add('hidden'); }
@@ -1890,9 +1862,9 @@ function importJSON(e) {
       saveBackup(); // Snapshot before overwriting
       movies = sanitizeMovies(data);
       nextId = Math.max(0, ...movies.map(m => m.id)) + 1;
-      localStorage.setItem('mc_movies_v2', JSON.stringify(movies));
+      persist(); // saves to localStorage + auto-syncs to cloud
       render(); closeSettings();
-      toast(`Imported ${data.length} movies! Go to Settings → Push to Cloud to save to cloud.`, 't-ok');
+      toast(`Imported ${data.length} movies — syncing to cloud.`, 't-ok');
     } catch(e) { toast('Import failed — not a valid JSON file.', 't-err'); }
   };
   r.readAsText(f); e.target.value = '';
