@@ -980,7 +980,7 @@ function initHeaderDate() {
 }
 
 // ── INIT ─────────────────────────────────────────────────────────────
-function init() {
+async function init() {
   initHeaderDate();
   // Populate year dropdown in search
   const ySel = document.getElementById('omdbY');
@@ -994,20 +994,25 @@ function init() {
     ySel.appendChild(o);
   }
 
-  const stored = localStorage.getItem('mc_movies_v2');
-  if (stored) {
-    try {
-      movies = sanitizeMovies(JSON.parse(stored));
-      nextId = Math.max(0, ...movies.map(m => m.id)) + 1;
-    } catch(e) { loadSeed(); }
-  } else {
-    loadSeed();
-  }
-
   apiKey = localStorage.getItem('mc_omdb_key') || '';
 
-  // Check cloud on startup — auto-pulls if local is empty
-  onCloudInit();
+  // Cloud is always source of truth — fetch first before touching local state.
+  // This prevents the race condition where loadSeed() pushes placeholder data
+  // to Supabase before onCloudInit() can read the real collection.
+  const cloudLoaded = await onCloudInit();
+
+  if (!cloudLoaded) {
+    // Cloud unavailable or empty — fall back to local cache, then seed
+    const stored = localStorage.getItem('mc_movies_v2');
+    if (stored) {
+      try {
+        movies = sanitizeMovies(JSON.parse(stored));
+        nextId = Math.max(0, ...movies.map(m => m.id)) + 1;
+      } catch(e) { loadSeed(); }
+    } else {
+      loadSeed();
+    }
+  }
 
   render();
 }
@@ -1015,7 +1020,7 @@ function init() {
 function loadSeed() {
   movies = JSON.parse(JSON.stringify(SEED));
   nextId = movies.length + 10;
-  persist();
+  localStorage.setItem('mc_movies_v2', JSON.stringify(movies)); // local only — never push seed to cloud
 }
 
 function persist() {
@@ -1603,31 +1608,27 @@ function moveToCollection(id) {
 // Called on init. Cloud is the source of truth — always loads from cloud
 // if cloud count >= local count. If local is somehow ahead, prompts to push.
 async function onCloudInit() {
+  // Returns true if cloud data was loaded, false if cloud was unreachable or empty.
+  // Called at the top of init() before any local state is set.
   updateSyncStatus('syncing');
   try {
     const res = await fetch(`${SB_URL}/rest/v1/movie_collection?id=eq.1`, { headers: SB_HDR });
-    if (!res.ok) { updateSyncStatus('error'); return; }
+    if (!res.ok) { updateSyncStatus('error'); return false; }
     const rows = await res.json();
     if (!rows.length || !Array.isArray(rows[0].movies) || rows[0].movies.length === 0) {
-      updateSyncStatus('synced'); return;
+      updateSyncStatus('synced'); return false; // Empty cloud — new account, not an error
     }
     const cloudMovies = sanitizeMovies(rows[0].movies);
-    const cloudCount  = cloudMovies.length;
-    const localCount  = movies.length;
-    if (cloudCount >= localCount) {
-      // Cloud is authoritative — load it so every device always sees the same collection
-      movies = cloudMovies;
-      nextId = Math.max(200, ...movies.map(m => m.id)) + 1;
-      localStorage.setItem('mc_movies_v2', JSON.stringify(movies));
-      render();
-    } else {
-      // Local is ahead of cloud (e.g. connectivity issue during a previous push)
-      toast(`☁ Local has ${localCount} films but cloud has ${cloudCount}. Use Force Push in Settings to sync.`, 't-info');
-    }
+    // Cloud is always authoritative for the shared collection
+    movies = cloudMovies;
+    nextId = Math.max(200, ...movies.map(m => m.id)) + 1;
+    localStorage.setItem('mc_movies_v2', JSON.stringify(movies));
     updateSyncStatus('synced');
+    return true;
   } catch(e) {
     console.error('Cloud init check failed:', e);
     updateSyncStatus('error');
+    return false;
   }
 }
 
