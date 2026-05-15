@@ -1608,18 +1608,36 @@ function moveToCollection(id) {
 // Called on init. Cloud is the source of truth — always loads from cloud
 // if cloud count >= local count. If local is somehow ahead, prompts to push.
 async function onCloudInit() {
-  // Returns true if cloud data was loaded, false if cloud was unreachable or empty.
-  // Called at the top of init() before any local state is set.
+  // Returns true if data was resolved (from cloud or local push), false if both empty or network error.
+  // Arbitration: whichever side has MORE movies wins. Ties go to cloud.
+  // This handles both normal cross-device sync AND recovery when cloud was accidentally overwritten.
   updateSyncStatus('syncing');
   try {
     const res = await fetch(`${SB_URL}/rest/v1/movie_collection?id=eq.1`, { headers: SB_HDR });
     if (!res.ok) { updateSyncStatus('error'); return false; }
     const rows = await res.json();
-    if (!rows.length || !Array.isArray(rows[0].movies) || rows[0].movies.length === 0) {
-      updateSyncStatus('synced'); return false; // Empty cloud — new account, not an error
+    const cloudMovies = (rows.length && Array.isArray(rows[0].movies)) ? sanitizeMovies(rows[0].movies) : [];
+
+    // Read local cache for comparison only — don't assign to movies yet
+    let localMovies = [];
+    try {
+      const raw = localStorage.getItem('mc_movies_v2');
+      if (raw) localMovies = sanitizeMovies(JSON.parse(raw));
+    } catch(e) {}
+
+    if (cloudMovies.length === 0 && localMovies.length === 0) {
+      updateSyncStatus('synced'); return false; // Truly new account — load seed
     }
-    const cloudMovies = sanitizeMovies(rows[0].movies);
-    // Cloud is always authoritative for the shared collection
+
+    if (localMovies.length > cloudMovies.length) {
+      // Local has more — cloud was likely overwritten (e.g. seed race). Auto-restore.
+      movies = localMovies;
+      nextId = Math.max(0, ...movies.map(m => m.id)) + 1;
+      await pushToCloud(true); // silently restore cloud from local
+      return true;
+    }
+
+    // Cloud has equal or more — it's authoritative. Load it everywhere.
     movies = cloudMovies;
     nextId = Math.max(200, ...movies.map(m => m.id)) + 1;
     localStorage.setItem('mc_movies_v2', JSON.stringify(movies));
