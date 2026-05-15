@@ -5,6 +5,17 @@ Format: **Priority · Complexity · Est. tokens**
 
 ---
 
+## ✅ Completed (2026-05-15) — Cross-device sync fix + Settings cleanup
+
+- **Root cause fixed** — `init()` was calling `loadSeed()` → `persist()` → `pushToCloud()` before `onCloudInit()` resolved, causing a race condition that overwrote Supabase with 42 placeholder movies on any new device
+- **Cloud-first init** — `init()` is now `async` and `await`s `onCloudInit()` before touching localStorage or seed data
+- **Count-based arbitration** — `onCloudInit()` compares local vs cloud counts: local wins if it has more (silent auto-restore), cloud wins otherwise (normal sync). Eliminates the need for manual push/pull entirely
+- **`loadSeed()` isolated** — no longer calls `persist()`, writes localStorage only, never pushes placeholder data to Supabase
+- **Settings stripped down** — removed Cloud Sync section (Pull from Cloud, Force Push), Local Backup buttons, Export CSV, and Danger Zone. Settings now contains only OMDb API Key and Export/Import JSON
+- **Import auto-syncs** — `importJSON()` now calls `persist()` so imported data pushes to cloud immediately
+
+---
+
 ## ✅ Completed (2026-05-06) — Firebase → Supabase Migration
 
 - **Removed Firebase** — stripped 3 SDK scripts, all Firebase auth/database code, Google Sign-In flow

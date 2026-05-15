@@ -1,7 +1,7 @@
 # REFERENCES — Dustanie Film Collection
 
 ## Project Overview
-Single-file web app (`index.html`) for tracking a personal movie collection. No framework — plain HTML/CSS/JS. Firebase Realtime Database for cloud sync. Deployed on Cloudflare Pages.
+Single-file web app (`index.html`) for tracking a personal movie collection. No framework — plain HTML/CSS/JS. Supabase for cloud sync (migrated from Firebase). Deployed on Cloudflare Pages at `movies.dustanie.com`. Auth via shared `auth.js` loaded from `dustanie.com`.
 
 ---
 
@@ -17,20 +17,26 @@ Single-file web app (`index.html`) for tracking a personal movie collection. No 
 ## Architecture Summary
 
 ### Data Layer
-- **localStorage key:** `mc_movies_v2` — full movies array as JSON
-- **SEED:** 42 hardcoded films (Cary Grant collection) used on first load
-- **sanitizeMovies():** always call this before assigning any incoming array (localStorage, cloud, import) to ensure all fields exist with correct types
-- **persist():** saves to localStorage only — never auto-writes to Firebase
+- **Supabase is source of truth** — `init()` is `async` and awaits `onCloudInit()` before reading localStorage or loading seed
+- **localStorage key:** `mc_movies_v2` — local cache only; populated from cloud on every load
+- **SEED:** 42 hardcoded films used only when BOTH cloud and localStorage are empty (brand-new account)
+- **sanitizeMovies():** always call before assigning any incoming array (localStorage, cloud, import)
+- **persist():** saves to localStorage + auto-pushes to Supabase on every mutation (silent); skipped during bulk enrich
+- **loadSeed():** writes localStorage only — never calls `persist()`, never touches Supabase
 
 ### Supabase / Cloud Sync
 - **Project:** `ecckvouhkoiuhdbynbqa.supabase.co` (shared with dustanie.com project)
 - **Table:** `movie_collection` — single row (id=1), `movies` (jsonb), `updated_at`, `count`
-- **Auth:** none required — anon key, shared collection for Dustin & Stephanie
-- **Sync model:** explicit push/pull only — no real-time listener
-- **pushToCloud():** POST with `Prefer: resolution=merge-duplicates` (upsert)
-- **syncFromCloud():** GET `movie_collection?id=eq.1`
-- **onCloudInit():** called on startup — auto-pulls if local is empty, notifies if counts differ
+- **Auth:** anon key — shared collection, no per-user rows
+- **onCloudInit():** awaited at top of `init()`. Count-based arbitration: if local > cloud → silent auto-push (recovery); if cloud ≥ local → load cloud (normal sync). Returns `true/false`.
+- **pushToCloud(silent):** POST upsert with `Prefer: resolution=merge-duplicates`; silent=true for auto-saves
+- **syncFromCloud():** still exists in code but no longer exposed in UI
 - No external SDK — vanilla fetch calls only
+
+### Settings (as of 2026-05-15)
+Two sections only:
+- **OMDb API Key** — stored in localStorage as `mc_omdb_key`
+- **Backup** — Export JSON / Import JSON. Import calls `persist()` so cloud syncs immediately.
 
 ### OMDb Integration
 - API key stored in `localStorage` as `mc_omdb_key`
@@ -59,6 +65,10 @@ Single-file web app (`index.html`) for tracking a personal movie collection. No 
 ---
 
 ## Bug History
+
+### Fixed (2026-05-15)
+- **Cross-device sync race condition** — new device loaded SEED, then `persist()` pushed 42 seed movies to Supabase before `onCloudInit()` could read the real collection. Fixed: `init()` now async, awaits cloud first; `loadSeed()` no longer calls `persist()`. Count-based arbitration added so local data auto-restores cloud if local has more movies.
+- **Settings over-complexity** — removed manual Push/Pull buttons, Local Backup section, Export CSV, and Danger Zone. Not needed with automatic sync.
 
 ### Fixed (2026-04-23)
 - **syncFromCloud() missing sanitizeMovies()** — pulled cloud data was not sanitized, risking render crashes with old-format data
